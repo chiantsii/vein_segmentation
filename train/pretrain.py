@@ -28,6 +28,8 @@ def train():
     os.makedirs("checkpoints", exist_ok=True)
     os.makedirs("predictions", exist_ok=True)
 
+    best_loss = float('inf')  # 初始為無限大
+
     for epoch in range(1, 31):
         model.train()
         epoch_loss = 0
@@ -48,7 +50,14 @@ def train():
 
             epoch_loss += masked_loss.item()
 
-        print(f"Epoch {epoch} | Loss: {epoch_loss / len(dataloader):.4f}")
+        avg_loss = epoch_loss / len(dataloader)
+        print(f"Epoch {epoch} | Loss: {avg_loss:.4f}")
+
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(model.state_dict(), "checkpoints/best_model.pth")
+            print(f"✅ Saved new best model at epoch {epoch} with loss {best_loss:.4f}")
+        
 
         # 儲存預測圖
         model.eval()

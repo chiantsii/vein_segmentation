@@ -31,6 +31,7 @@ class VeinSegmentationDataset(Dataset):
 
     def __getitem__(self, idx):
         bg_path, vein_path, outline_path, leaf_path = self.samples[idx]
+        print("Loading:", bg_path)
 
         # 讀取圖片並 resize
         image = Image.open(bg_path).convert("RGB").resize(self.image_size)
