@@ -22,7 +22,7 @@ def train():
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.BCELoss()
 
-    dataset = VeinSegmentationDataset("/Users/chiantsii/Desktop/vein_seg/data/LVD2021/36_Holly_labels/train")
+    dataset = VeinSegmentationDataset("/Users/chiantsii/Desktop/vein_seg/data/LVD2021/36_Holly_labels/pretrain")
     dataloader = DataLoader(dataset, batch_size=4, shuffle=True)
 
     os.makedirs("checkpoints", exist_ok=True)
@@ -67,8 +67,6 @@ def train():
             output = model(sample_imgs)
             preds = output["coarse_mask"]
             save_image(preds, f"predictions/epoch_{epoch:02d}.png")
-
-        torch.save(model.state_dict(), f"checkpoints/core_net_epoch{epoch:02d}.pth")
 
 if __name__ == "__main__":
     train()
