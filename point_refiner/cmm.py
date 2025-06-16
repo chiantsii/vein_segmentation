@@ -10,6 +10,9 @@ class ConfidenceMaskModule:
         A_unc: uncertainty map
         Omega_K: list of K most uncertain point indices
     """
+    def __call__(self, *args, **kwds):
+        print("🔍 A_unc.shape =", A_unc.shape)
+
     def __init__(self, T_high=0.9, T_low=0.1, top_k=512):
         self.T_high = T_high
         self.T_low = T_low

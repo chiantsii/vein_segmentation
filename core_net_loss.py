@@ -1,6 +1,20 @@
 import torch
 import torch.nn.functional as F
 
+def dice_loss(pred, target, smooth=1e-6):
+    pred = pred.view(-1)
+    target = target.view(-1)
+    intersection = (pred * target).sum()
+    return 1 - (2. * intersection + smooth) / (pred.sum() + target.sum() + smooth)
+
+def iou_loss(pred, target, smooth=1e-6):
+    pred = pred.view(-1)
+    target = target.view(-1)
+    intersection = (pred * target).sum()
+    union = pred.sum() + target.sum() - intersection
+    return 1 - (intersection + smooth) / (union + smooth)
+
+
 def core_net_loss(output, gt_mask):
     """
     Args:
@@ -15,36 +29,32 @@ def core_net_loss(output, gt_mask):
         loss_dict: dict with 'pixel_loss', 'point_loss'
     """
 
-    # --- Loss 1: pixel-wise BCE ---
-    pixel_loss = F.binary_cross_entropy(output["coarse_mask"], gt_mask)
+    pred_mask = output["coarse_mask"]
+    bce = F.binary_cross_entropy(pred_mask, output["pseudo_label"])
+    dice = dice_loss(pred_mask, output["pseudo_label"])
+    iou  = iou_loss(pred_mask, output["pseudo_label"])
 
-    # --- Loss 2: point-wise BCE (每張圖的點)
+    pixel_loss = bce + 0.5 * dice + 0.5 * iou  # 加總 loss
+
+    # Point-wise BCE Loss
     point_loss = 0
     for i in range(len(output["point_logits"])):
         logits = output["point_logits"][i]             # (K_i, 1)
-        coords = output["point_coords"][i].long()      # (K_i, 2), type long for indexing
+        coords = output["point_coords"][i].long()      # (K_i, 2)
 
-        # 抽出該圖的對應 GT mask
         gt_i = gt_mask[i, 0]                           # [H, W]
-        H, W = gt_i.shape
 
-        # 取得每個點的 ground truth label
-        clamped_coords = torch.clamp(coords, 0, W - 1)
-        labels = gt_i[clamped_coords[:, 0], clamped_coords[:, 1]]  # shape: (K_i,)
-        labels = labels.unsqueeze(1)                               # (K_i, 1)
+        # 防止超出邊界
+        coords[:, 0] = coords[:, 0].clamp(0, gt_i.shape[0] - 1)
+        coords[:, 1] = coords[:, 1].clamp(0, gt_i.shape[1] - 1)
 
-        # 計算 BCE loss
+        labels = gt_i[coords[:, 0], coords[:, 1]]      # (K_i,)
+        logits = logits.squeeze()                      # (K_i,)
         point_loss += F.binary_cross_entropy_with_logits(logits, labels)
 
-    point_loss = point_loss / len(output["point_logits"])  # 平均每張圖的點 loss
-
-    # 總和 loss，可自行調整權重
     total_loss = pixel_loss + point_loss
+    return total_loss, {"pixel_loss": pixel_loss.item(), "point_loss": point_loss.item()}
 
-    return total_loss, {
-        "pixel_loss": pixel_loss.item(),
-        "point_loss": point_loss.item()
-    }
 
 if __name__ == "__main__":
     # ==== 模擬輸入 ====

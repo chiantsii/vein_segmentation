@@ -61,7 +61,7 @@ class VeinSegmentationDataset(Dataset):
 
 if __name__ == "__main__":
     # 替換成你自己的資料夾路徑
-    dataset_path = "/Users/chiantsii/Desktop/vein_seg/data/LVD2021/36_Holly_labels/train"
+    dataset_path = "/Users/chiantsii/Desktop/vein_seg/data/LVD2021/36_Holly_labels/pretrain"
     dataset = VeinSegmentationDataset(dataset_path)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
@@ -90,3 +90,6 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.show()
+
+
+# python dataloader.py 測試 ｏｋ

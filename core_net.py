@@ -8,19 +8,24 @@ class CoRE_Net(nn.Module):
         self.decoder = decoder
         self.point_refiner = point_refiner  # 包含 point head 與 feature extractor
 
-    def forward(self, x):
-        feats = self.encoder(x)                          # list of 4 feature maps
-        deepest_feat = feats[-1]                         # [B, 516, 14, 14]
+    def forward(self, x, use_refiner=True):
+        feats = self.encoder(x)
+        deepest_feat = feats[-1]
+        pred_mask = self.decoder(feats)
 
-        pred_mask = self.decoder(feats)                  # [B, 1, 448, 448]
-
-        logits, coords = self.point_refiner(
-            pred_mask, deepest_feat         # pass to point refiner
-        )
+        if use_refiner:
+            logits, point_coords, point_mask, refined_mask, Yu = self.point_refiner(pred_mask, deepest_feat)
+        else:
+            logits, point_coords, point_mask, refined_mask, Yu = None, None, None, None, None
 
         return {
-            "coarse_mask": pred_mask,        # 原 segmentation
-            "point_logits": logits,          # 每個選中點的預測值 (raw logits)
-            "point_coords": coords           # 每張圖的點座標
+            "coarse_mask": pred_mask,
+            "refined_mask": refined_mask,
+            "point_mask": point_mask,
+            "point_logits": logits,
+            "point_coords": point_coords,
+            "pseudo_label": Yu  # 這就是 Y_u
         }
+
+
 
