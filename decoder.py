@@ -66,15 +66,5 @@ class Decoder(nn.Module):
         out = self.finalrelu2(out)
         out = self.finalconv3(out)
  
-        prob = torch.sigmoid(out)  # for binary mask
-        return prob
- 
+        return out
 
-if __name__ == '__main__':
-    from encoder import Encoder
-    model = Decoder()
-    encoder = Encoder()
-    dummy = torch.randn(1, 3, 448, 448)
-    feats = encoder(dummy)
-    p_coarse_mask = model(feats)
-    print(f"Output mask shape: {p_coarse_mask.shape}")  # expected: [1, 1, 448, 448]

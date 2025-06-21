@@ -10,9 +10,7 @@ class ConfidenceMaskModule:
         A_unc: uncertainty map
         Omega_K: list of K most uncertain point indices
     """
-    def __call__(self, *args, **kwds):
-        print("🔍 A_unc.shape =", A_unc.shape)
-
+    
     def __init__(self, T_high=0.9, T_low=0.1, top_k=512):
         self.T_high = T_high
         self.T_low = T_low
@@ -49,7 +47,7 @@ class ConfidenceMaskModule:
         """
         B, C, H, W = A_unc.shape
         A_unc_flat = A_unc.view(B, -1)  # (B, H*W)
-        _, topk_idx = torch.topk(-A_unc_flat, self.top_k, dim=1)  # negative: smallest values
+        _, topk_idx = torch.topk(A_unc_flat, self.top_k, dim=1)  # negative: smallest values
 
         indices = []
         for b in range(B):
@@ -62,12 +60,77 @@ class ConfidenceMaskModule:
         A_unc = self.get_uncertainty_map(p_coarse, A)
         Omega_K = self.get_topk_uncertain_points(A_unc)
         return A, A_unc, Omega_K
+    
+
+# ---------------- TEST FUNCTION (inside __main__) ----------------
+def test_cmm():
+    from core_net import CoRE_Net
+    from encoder import Encoder
+    from decoder import Decoder
+    from point_refiner.point_refiner import PointRefiner
+
+    # 參數設定
+    image_path = "/Users/chiantsii/Desktop/vein_seg/data/LVD2021/36_Holly_labels/train/36_115/115_0003_背景.jpg"  # 替換你的測試圖
+    model_path = "/Users/chiantsii/Desktop/vein_seg/checkpoints/36_Holly_labels/best_model.pth"  # coarse-only 模型
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # 模型
+    model = CoRE_Net(Encoder(), Decoder(), PointRefiner())
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval().to(device)
+
+    # 圖片處理
+    from torchvision import transforms
+    from PIL import Image
+
+    # 圖片處理
+    img = Image.open(image_path).convert("RGB")
+    transform = transforms.Compose([
+        transforms.Resize((448, 448)),
+        transforms.ToTensor()
+    ])
+    img_tensor = transform(img).unsqueeze(0).to(device)
+
+    # 預測 coarse mask
+    with torch.no_grad():
+        output = model(img_tensor, use_refiner=False)
+        coarse_sigmoid = output["coarse_mask"]
+
+    # CMM 處理
+    cmm = ConfidenceMaskModule(top_k=512)
+    A, A_unc, Omega_K = cmm(coarse_sigmoid)
+
+    # 可視化
+    import matplotlib.pyplot as plt
+    coarse_np = coarse_sigmoid.squeeze().cpu().numpy()
+    unc_map = A_unc.squeeze().cpu().numpy()
+    topk_points = Omega_K[0].cpu().numpy()
+
+    plt.imshow(coarse_np, cmap='gray')
+    plt.title("Coarse Mask")
+    plt.axis("off")
+    plt.show()
+
+    plt.imshow(unc_map, cmap='hot')
+    plt.title("Uncertainty Map (A_unc)")
+    plt.axis("off")
+    plt.show()
+
+    fig, ax = plt.subplots()
+    ax.imshow(unc_map, cmap='hot')
+    ax.scatter(topk_points[:, 1], topk_points[:, 0], s=10, c='cyan', label='Top-K Points')
+    ax.set_title("Top-K Uncertain Points Overlay")
+    ax.axis("off")
+    plt.legend()
+    plt.show()
+
+    print("✅ 顯示完成。")
 
 
+# ---------------- MAIN ----------------
 if __name__ == "__main__":
-    p_coarse = torch.rand(1, 1, 448, 448)
-    cmm = ConfidenceMaskModule()
-    A, A_unc, Omega_K = cmm(p_coarse)
-    print(f"Confident Mask A: {A.shape}, Uncertainty Map: {A_unc.shape}, Top-K Points: {Omega_K[0].shape}")
+    test_cmm()
 
-# python cmm.py
+
+# python -m point_refiner.cmm

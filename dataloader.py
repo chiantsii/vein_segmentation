@@ -60,18 +60,16 @@ class VeinSegmentationDataset(Dataset):
         }
 
 if __name__ == "__main__":
-    # 替換成你自己的資料夾路徑
+
     dataset_path = "/Users/chiantsii/Desktop/vein_seg/data/LVD2021/36_Holly_labels/pretrain"
     dataset = VeinSegmentationDataset(dataset_path)
     dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-    # 取出一筆資料做測試
     sample = next(iter(dataloader))
     image = sample["image"][0].permute(1, 2, 0).numpy()
     gt_mask = sample["gt_mask"][0][0].numpy()
     leaf_mask = sample["leaf_mask"][0][0].numpy()
-
-    # 顯示圖片
+    
     plt.figure(figsize=(12, 4))
     plt.subplot(1, 3, 1)
     plt.imshow(image)

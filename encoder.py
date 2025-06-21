@@ -73,11 +73,3 @@ class Encoder(nn.Module):
         e4 = self.rmp(e4)
         return [e1, e2, e3, e4]  # return multi-scale features
 
-
-if __name__ == "__main__":
-    
-    model = Encoder()
-    x = torch.randn(1, 3, 448, 448)
-    feats = model(x)
-    for i, f in enumerate(feats):
-        print(f"Feature {i+1} shape: {f.shape}")
